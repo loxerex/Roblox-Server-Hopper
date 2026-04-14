@@ -23,7 +23,7 @@ Order = None
 retry_time = None
 refresh_cache = None
 hop_key = None
-
+sort_type = None
 load_json = False
 client = r_client.RobloxClient()
 
@@ -64,6 +64,10 @@ if os.path.exists(resource_path("user_data.json")):
                 retry_time = data["rt_time"]
                 refresh_cache = data["rf_cache"]
                 hop_key = data["hop_key"]
+                if data.get("sort_type"):
+                    sort_type = data["sort_type"]
+                else:
+                    sort_type = "ping"
                 selected_data = True
 
 if not load_json:
@@ -77,6 +81,14 @@ if not load_json:
             print(f"{MAGENTA}Would you like {kb} to be your hop key? [y/n]{RESET}")
             if (ind := input(f"{BLUE}>{RESET}").lower()) in ("yes", "y"):
                 hop_key = kb
+        except Exception:
+            pass
+
+    print(f"{CYAN}Insert sort type: [playing, fps, ping]{RESET}")
+    while sort_type is None:
+        try:
+            if (inp := input(">").lower()) in ("playing", "fps", "ping"):
+                sort_type = inp
         except Exception:
             pass
 
@@ -123,6 +135,7 @@ if not load_json:
                 "rt_time": retry_time,
                 "rf_cache": refresh_cache,
                 "hop_key": hop_key,
+                "sort_type": sort_type,
             }
         }
         if not os.path.exists(resource_path("user_data.json")):
@@ -153,8 +166,8 @@ def get_servers(cursor: str | None = None):
 
     send = endpoint + cursor if cursor is not None else endpoint
     r = requests.get(send)
-    print(r.json())
     if r.status_code != 200:
+        print(r.json())
         return
 
     if r.json().get("nextPageCursor"):
@@ -162,16 +175,15 @@ def get_servers(cursor: str | None = None):
     else:
         print(f"{RED}No next page{RESET}")
         return
-
     for server in r.json().get("data"):
         if (
             server.get("id") not in job_id_cache
             and server.get("id") not in job_id_blacklist
         ):
-            ping = server.get("ping")
+            sort = server.get(sort_type)
             jid = server.get("id")
-            if ping is not None:
-                job_id_cache.append((ping, jid))
+            if sort is not None and sort > 1:
+                job_id_cache.append((sort, jid))
 
     job_id_cache.sort(key=lambda x: x[0])
     print(f"{GREEN}Updated cache: {len(job_id_cache)} servers{RESET}")
@@ -189,17 +201,18 @@ def join_random(x: typing.Any) -> None:
         job_id = ""
         ping = "???"
 
-    print(f"{GREEN}Joining {job_id}, ping {ping}{RESET}")
+    print(f"{GREEN}Joining {job_id}, sort type: {ping}{RESET}")
     client.join(placeId=id, jobId=job_id)
 
 
 def server_loop():
-    global job_id_cache, job_id_blacklist
+    global job_id_cache, job_id_blacklist, cached_cusor
     c = refresh_cache
     while True:
         if c <= 0:
             c = refresh_cache
             print(f"{YELLOW}Refreshing Cache{RESET}")
+            cached_cusor = None
             job_id_cache = []
             job_id_blacklist = []
         get_servers()
