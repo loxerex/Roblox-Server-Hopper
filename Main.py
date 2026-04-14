@@ -53,6 +53,7 @@ if os.path.exists(resource_path("user_data.json")):
         json_d = None
         with open(resource_path("user_data.json"), "r") as f:
             json_d = json.load(f)
+        print(f"{GREEN}Saved Aliases: {list(json_d.keys())}{RESET}")
         print(f"{CYAN}Enter alias name:{RESET}")
         selected_data = None
         while not selected_data:
@@ -152,7 +153,7 @@ def get_servers(cursor: str | None = None):
 
     send = endpoint + cursor if cursor is not None else endpoint
     r = requests.get(send)
-
+    print(r.json())
     if r.status_code != 200:
         return
 
